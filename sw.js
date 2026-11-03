@@ -5,14 +5,14 @@
    the Cache API stores and replays them fine for <img>-based tile display. */
 "use strict";
 
-const APP_CACHE  = "monarch-app-v3";
+const APP_CACHE  = "monarch-app-v4";
 const TILE_CACHE = "monarch-tiles-v1";
 const APP_SHELL  = ["./", "./index.html", "./sw.js"];
 
 self.addEventListener("install", (e) => {
   e.waitUntil(
     caches.open(APP_CACHE)
-      .then((c) => c.addAll(APP_SHELL).catch(() => {}))
+      .then((c) => c.addAll(APP_SHELL.map((u) => new Request(u, { cache: "reload" }))).catch(() => {}))
       .then(() => self.skipWaiting())
   );
 });
@@ -36,10 +36,19 @@ self.addEventListener("fetch", (e) => {
   const req = e.request;
   if (req.method !== "GET") return;
 
-  // Navigations: serve the cached shell first so the app opens offline.
+  // Navigations: network-first so updates land on the next open; fall back
+  // to the cached shell when there's no signal on the lakebed.
   if (req.mode === "navigate") {
     e.respondWith(
-      caches.match("./index.html").then((cached) => cached || fetch(req)).catch(() => caches.match("./index.html"))
+      fetch(req, { cache: "no-cache" })
+        .then((resp) => {
+          if (resp && resp.ok) {
+            const copy = resp.clone();
+            caches.open(APP_CACHE).then((c) => c.put("./index.html", copy));
+          }
+          return resp;
+        })
+        .catch(() => caches.match("./index.html"))
     );
     return;
   }
