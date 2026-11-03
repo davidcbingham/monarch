@@ -5,7 +5,7 @@
    the Cache API stores and replays them fine for <img>-based tile display. */
 "use strict";
 
-const APP_CACHE  = "monarch-app-v2";
+const APP_CACHE  = "monarch-app-v3";
 const TILE_CACHE = "monarch-tiles-v1";
 const APP_SHELL  = ["./", "./index.html", "./sw.js"];
 
