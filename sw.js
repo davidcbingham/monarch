@@ -1,13 +1,13 @@
 /* Monarch — service worker
    Offline for a field tool: cache the app shell so it opens with no signal,
-   and cache basemap + historic-overlay tiles for the townsite when the user
+   and cache basemap tiles for the townsite when the user
    asks to "download this area". Cross-origin tiles come back opaque (no CORS);
    the Cache API stores and replays them fine for <img>-based tile display. */
 "use strict";
 
-const APP_CACHE  = "monarch-app-v4";
+const APP_CACHE  = "monarch-app-v5";
 const TILE_CACHE = "monarch-tiles-v1";
-const APP_SHELL  = ["./", "./index.html", "./sw.js"];
+const APP_SHELL  = ["./", "./index.html", "./sw.js", "./map-1919.jpg"];
 
 self.addEventListener("install", (e) => {
   e.waitUntil(
@@ -29,7 +29,7 @@ self.addEventListener("activate", (e) => {
 
 // Hosts whose responses are map tiles / dynamic map exports worth caching.
 function isTile(url) {
-  return /(server\.arcgisonline\.com|ngmdb\.usgs\.gov|basemap\.nationalmap\.gov|tiledbasemaps\.arcgis\.com)/.test(url);
+  return /(server\.arcgisonline\.com|basemap\.nationalmap\.gov|tiledbasemaps\.arcgis\.com)/.test(url);
 }
 
 self.addEventListener("fetch", (e) => {

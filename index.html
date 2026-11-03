@@ -66,8 +66,6 @@ html,body{height:100%;overflow:hidden;background:var(--ink);
 .sheet.open{display:flex}
 .sheet h2{font-family:"Iowan Old Style","Palatino","Georgia",serif;font-size:20px;margin-bottom:8px}
 .sheet p{font-size:13.5px;opacity:.88;margin-bottom:12px}
-.sheet .grow{flex:1;min-height:0;border:1px solid var(--hair);border-radius:12px;overflow:hidden;position:relative}
-#confmap{position:absolute;inset:0}
 .row{display:flex;gap:10px;margin-top:12px}
 .btn{flex:1;padding:14px;border-radius:12px;border:1px solid var(--hair);
   background:transparent;color:var(--paper);font-size:15px;font-weight:600;cursor:pointer}
@@ -92,9 +90,6 @@ input[type=text]{width:100%;padding:14px;border-radius:12px;border:1px solid var
 .choice p{font-size:12.5px;opacity:.8;margin:0}
 .note{font-size:12px;opacity:.8;border-left:2px solid var(--water);padding:2px 0 2px 10px;margin:10px 0}
 .note.warn{border-color:var(--survey)}
-.spin{width:34px;height:34px;border-radius:50%;border:3px solid var(--hair);border-top-color:var(--survey);
-  animation:spin 1s linear infinite;margin:18px auto}
-@keyframes spin{to{transform:rotate(360deg)}}
 #bar{height:8px;border-radius:4px;background:rgba(255,255,255,.08);overflow:hidden;margin:14px 0 6px}
 #bar > i{display:block;height:100%;width:0;background:var(--water);transition:width .2s}
 .acc{font-size:11px;opacity:.75;margin-top:6px;min-height:14px}
@@ -188,30 +183,13 @@ body.aligning #alignbar{display:block}
   <p>Two ways in. The first is one tap. The second gives you full control and works with a map you prepared at home.</p>
   <div class="choice" id="cAuto">
     <h3>Load it automatically <span class="tag">Recommended</span></h3>
-    <p>Pull a georeferenced pre‑1950 USGS topo straight from the National Geologic Map Database. No screenshot, no tapping landmarks — it lands already pinned to the earth.</p>
+    <p>Use the 1919 USGS sheet of this valley, which names Monarch, its railroad, and Arapaho Creek. It lands already pinned to the earth and works with no signal.</p>
   </div>
   <div class="choice" id="cManual">
     <h3>Use a screenshot <span class="tag alt">Manual</span></h3>
-    <p>Bring your own scan from USGS topoView and slide, size, and twist it into place over the satellite by eye. Use this for a sharper map, an offline‑prepared image, or if the automatic pull can't find one.</p>
+    <p>Bring your own scan from USGS topoView and slide, size, and twist it into place over the satellite by eye. Use this for another edition or a map you prepared at home.</p>
   </div>
   <div class="row"><button class="btn" id="srcBack">Back</button></div>
-</div>
-
-<!-- Auto loading -->
-<div class="sheet" id="shAuto">
-  <h2 id="autoTitle">Finding a pre‑flood map…</h2>
-  <p id="autoBody">Asking the USGS map service what it has for this valley before the water came.</p>
-  <div class="spin" id="autoSpin"></div>
-  <div class="grow" id="autoPreviewWrap" style="display:none"><div id="confmap"></div></div>
-  <p id="autoConfirmQ" style="display:none" class="note warn">Look at the overlay: does it show a <b>town and a river</b>, or a <b>reservoir</b>? If you see open water where the town should be, this edition is too late — switch to a screenshot of an earlier map.</p>
-  <div class="row" id="autoActions" style="display:none">
-    <button class="btn" id="autoReject">Shows water — screenshot</button>
-    <button class="btn pri" id="autoAccept">Looks right — keep it</button>
-  </div>
-  <div class="row" id="autoFail" style="display:none">
-    <button class="btn" id="autoBack">Back</button>
-    <button class="btn pri" id="autoToManual">Use a screenshot instead</button>
-  </div>
 </div>
 
 <!-- Screenshot sheet (manual path) -->
@@ -252,7 +230,7 @@ body.aligning #alignbar{display:block}
 <!-- Offline download -->
 <div class="sheet" id="shDl">
   <h2>Carry this valley offline</h2>
-  <p>Cell coverage on the lakebed is thin. Download the satellite tiles and the historic overlay for the townsite now, while you have signal, and the map keeps working when you don't.</p>
+  <p>Cell coverage on the lakebed is thin. Download the satellite tiles for the townsite now, while you have signal, and the map keeps working when you don't.</p>
   <div class="note" id="dlNote">Caches roughly a 3 km square around the townsite at walking zooms. A few hundred tiles — best done on Wi‑Fi.</div>
   <div id="bar" style="display:none"><i></i></div>
   <div class="acc" id="dlProg"></div>
@@ -296,12 +274,10 @@ const closeSheet=id=>$(id).classList.remove('open');
 /* ---------- constants ---------- */
 const TOWN=[40.12417,-105.76278];            // Arapaho Bay — the Monarch townsite per GLAHS
 const BASEMAP='https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
-// NGMDB topoView historical-overlay map services (public, no API key). Probed at
-// runtime from the device; if unreachable we fall back to a screenshot.
-const AUTO_SERVICES=[
-  'https://ngmdb.usgs.gov/arcgis/rest/services/topoview/ustOverlay/MapServer',
-  'https://ngmdb.usgs.gov/arcgis/rest/services/topoview/ustOverlayAuto/MapServer'
-];
+// The recommended path's map: the Rocky Mountain National Park sheet, USGS, 1919, cut around Monarch and
+// placed from its neatline, so it needs no service and no signal. topoView's overlay services draw nothing here.
+const PRE_FLOOD_SCALE=125000;                // the only pre-flood USGS sheets of this valley, 1915 and 1919
+const SHEET_1919={kind:'image',img:'./map-1919.jpg',w:2600,h:2000,center:[40.132568,-105.766442],mppx:5.31,rot:0,scale:PRE_FLOOD_SCALE};
 // topoView viewer, pre-centred on the townsite (hash is z/lat/lon).
 const TOPOVIEW='https://ngmdb.usgs.gov/topoview/viewer/#15/'+TOWN[0].toFixed(4)+'/'+TOWN[1].toFixed(4);
 // Offline area: ~3 km square around the townsite, walking zooms.
@@ -314,8 +290,8 @@ L.tileLayer(BASEMAP,{maxZoom:19,attribution:'Esri World Imagery · USGS HTMC'}).
 
 /* ---------- state ---------- */
 let overlay=null;                 // active Leaflet overlay layer (image or tiled)
-let source=null;                  // {kind:'auto'|'image', service?, img?, w?, h?, cal?, scale?, year?}
-let mapAccuracyM=30;              // honesty ring radius, driven by the map source
+let source=null;                  // {kind:'image', img, w, h, center, mppx, rot, scale?}
+let mapAccuracyM=65;              // honesty ring radius, driven by the map's scale
 let pins=[];
 let pinLayer=L.layerGroup().addTo(map), pendingLL=null;
 let watchId=null, follow=false, meMarker=null, accCirc=null, haloCirc=null, hdgDeg=null;
@@ -337,7 +313,8 @@ async function saveState(){ await kvSet('state:v2',{source,pins,mapAccuracyM}); 
 async function loadState(){
   const s=await kvGet('state:v2');
   if(s&&s.source){
-    pins=s.pins||[]; mapAccuracyM=s.mapAccuracyM||30;
+    pins=s.pins||[];
+    if(s.source.kind==='auto') s.source=SHEET_1919;   // saved by a version whose automatic path drew nothing
     if(s.source.kind==='image'&&s.source.cal){
       // Migrate a two-point calibration saved by the previous version to a pose.
       const cal=s.source.cal,w=s.source.w,h=s.source.h;
@@ -356,9 +333,8 @@ async function loadState(){
 
 /* ---------- honesty ring: accuracy from map scale (NMAS ≈ scale/50 in on the ground) ---------- */
 function accuracyForScale(scale){
-  if(!scale) return 30;
-  const m=scale*0.0254/50;                  // 1/50 inch on the ground, in metres
-  return Math.max(12,Math.round(m/5)*5);    // floor 12 m; round to 5 m
+  const m=(scale||PRE_FLOOD_SCALE)*0.0254/50;   // 1/50 inch on the ground, in metres; a screenshot of unknown scale is taken as the pre-flood sheets
+  return Math.max(12,Math.round(m/5)*5);        // floor 12 m; round to 5 m
 }
 
 /* ---------- waterline ---------- */
@@ -369,7 +345,7 @@ function setWL(){ water.style.setProperty('--wl',(+water.value)+'%'); setOverlay
 water.addEventListener('input',setWL);
 
 /* ---------- overlay builders ---------- */
-// Screenshot path: rotatable ground overlay — pose is centre latlng + metres per
+// The old map: rotatable ground overlay — pose is centre latlng + metres per
 // image pixel + rotation, so a hand-aligned screenshot can sit at any angle.
 // Pans ride the overlay pane for free; only zoom changes need a reposition.
 function mpspAt(lat,zoom){return 40075016.686*Math.cos(lat*Math.PI/180)/(256*Math.pow(2,zoom));}
@@ -412,34 +388,13 @@ function poseBounds(s){
   });
   return b;
 }
-// Auto path: tile the ArcGIS MapServer `export` op, one Web-Mercator tile at a time.
-const WM=20037508.342789244;
-function tile2bbox(x,y,z){const s=(WM*2)/Math.pow(2,z);
-  return [-WM+x*s, WM-(y+1)*s, -WM+(x+1)*s, WM-y*s];}
-function exportUrl(service,x,y,z){
-  return service+'/export?bbox='+tile2bbox(x,y,z).join(',')+
-    '&bboxSR=3857&imageSR=3857&size=256,256&format=png32&transparent=true&f=image';
-}
-const AutoTopo=L.TileLayer.extend({
-  getTileUrl:function(c){return exportUrl(this.options.service,c.x,c.y,c.z);}
-});
-function autoLayer(service){
-  return new AutoTopo('',{service,tileSize:256,minZoom:11,maxZoom:19,
-    opacity:1-(+water.value/100),attribution:'USGS Historical Topo · NGMDB topoView'});
-}
-
 async function applySource(s,keepView){
   if(overlay){map.removeLayer(overlay);overlay=null;}
   source=s;
-  mapAccuracyM=accuracyForScale(s.scale)||mapAccuracyM;
-  if(s.kind==='auto'){
-    overlay=autoLayer(s.service).addTo(map);
-    if(!keepView)map.setView(TOWN,16);
-  }else if(s.kind==='image'){
-    overlay=new RotImg({img:s.img,w:s.w,h:s.h,center:L.latLng(s.center),mppx:s.mppx,rot:s.rot||0,
-      opacity:1-(+water.value/100)}).addTo(map);
-    if(!keepView)map.fitBounds(poseBounds(s).pad(-0.15));
-  }
+  mapAccuracyM=accuracyForScale(s.scale);
+  overlay=new RotImg({img:s.img,w:s.w,h:s.h,center:L.latLng(s.center),mppx:s.mppx,rot:s.rot||0,
+    opacity:1-(+water.value/100)}).addTo(map);
+  if(!keepView)map.fitBounds(poseBounds(s).pad(-0.15));
   setWL(); refreshRing();
 }
 
@@ -453,65 +408,15 @@ $('wGo').onclick=()=>{closeSheet('shWelcome');openSheet('shSource');};
 $('srcBack').onclick=()=>{closeSheet('shSource');if(!source)openSheet('shWelcome');};
 $('bCal').onclick=()=>openSheet('shSource');
 
-/* ---------- AUTO path ---------- */
-$('cAuto').onclick=()=>{closeSheet('shSource');startAuto();};
-$('cManual').onclick=()=>{closeSheet('shSource');startManual();};
-$('autoToManual').onclick=()=>{closeSheet('shAuto');startManual();};
-$('autoBack').onclick=()=>{closeSheet('shAuto');openSheet('shSource');};
-
-function testImg(url,ms){return new Promise(res=>{
-  const i=new Image();let done=false;
-  const to=setTimeout(()=>{if(!done){done=true;res(false);}},ms||9000);
-  i.onload=()=>{if(!done){done=true;clearTimeout(to);res(true);}};
-  i.onerror=()=>{if(!done){done=true;clearTimeout(to);res(false);}};
-  i.src=url;
-});}
-let autoCandidate=null, confmap=null;
-async function startAuto(){
-  autoCandidate=null;
-  openSheet('shAuto');
-  $('autoTitle').textContent='Finding a pre‑flood map…';
-  $('autoBody').textContent='Asking the USGS map service what it has for this valley before the water came.';
-  $('autoSpin').style.display='block';
-  $('autoActions').style.display='none';
-  $('autoFail').style.display='none';
-  $('autoPreviewWrap').style.display='none';
-  $('autoConfirmQ').style.display='none';
-  let hit=null;
-  const [x,y]=lngLat2tile(TOWN[1],TOWN[0],14);
-  for(const svc of AUTO_SERVICES){
-    if(await testImg(exportUrl(svc,x,y,14),9000)){hit=svc;break;}   // eslint-disable-line no-await-in-loop
-  }
-  $('autoSpin').style.display='none';
-  if(!hit){
-    $('autoTitle').textContent='Couldn’t reach the map service';
-    $('autoBody').textContent='No signal, or the USGS service is unavailable right now. A screenshot needs no live connection once the image is on your phone.';
-    $('autoFail').style.display='flex';
-    return;
-  }
-  autoCandidate=hit;
-  $('autoTitle').textContent='Here’s what USGS has';
-  $('autoBody').textContent='This is the historical USGS topo for this spot. Confirm it shows the pre‑flood valley.';
-  $('autoPreviewWrap').style.display='block';
-  $('autoConfirmQ').style.display='block';
-  $('autoActions').style.display='flex';
-  buildConfMap(hit);
-}
-function buildConfMap(svc){
-  if(confmap){confmap.remove();confmap=null;}
-  confmap=L.map('confmap',{zoomControl:false,attributionControl:false}).setView(TOWN,15);
-  L.tileLayer(BASEMAP,{maxZoom:19}).addTo(confmap);
-  autoLayer(svc).setOpacity(1).addTo(confmap);
-}
-$('autoAccept').onclick=async()=>{
-  if(confmap){confmap.remove();confmap=null;}
-  closeSheet('shAuto');
-  await applySource({kind:'auto',service:autoCandidate,scale:125000,year:null});
+/* ---------- recommended path: the bundled 1919 sheet ---------- */
+$('cAuto').onclick=async()=>{
+  closeSheet('shSource');
+  await applySource(SHEET_1919);
   await saveState();
   enableWater(true); water.value=25; setWL();
-  status('Historic map pinned automatically. Ring shows ±<b>'+mapAccuracyM+' m</b> (coarse pre‑flood map). Drag the waterline down.');
+  status('1919 USGS map pinned. Ring shows ±<b>'+mapAccuracyM+' m</b> (a 1:125,000 sheet). Drag the waterline down.');
 };
-$('autoReject').onclick=()=>{if(confmap){confmap.remove();confmap=null;}closeSheet('shAuto');startManual();};
+$('cManual').onclick=()=>{closeSheet('shSource');startManual();};
 
 /* ---------- MANUAL / screenshot path: choose an image, then align it by hand ---------- */
 let imgData=null, imgW=0, imgH=0, importWarn=null;
@@ -590,9 +495,9 @@ $('alDone').onclick=async()=>{
   endAlign();
   await applySource({kind:'image',img:o.img,w:o.w,h:o.h,center:[c.lat,c.lng],
     mppx:o.mppx,rot:o.rot,scale:null},true);
-  mapAccuracyM=30; refreshRing(); saveState();
+  refreshRing(); saveState();
   enableWater(true); water.value=25; setWL();
-  status('Old map pinned by hand. Ring shows ±<b>30 m</b> (hand alignment). Drag the waterline down to surface Monarch.');
+  status('Old map pinned by hand. Ring shows ±<b>'+mapAccuracyM+' m</b>. Drag the waterline down to surface Monarch.');
 };
 
 // Gestures. #alignTouch sits over the map while "Move old map" is active:
@@ -735,16 +640,13 @@ function areaTileUrls(){
     for(let x=Math.min(xw,xe);x<=Math.max(xw,xe);x++)
       for(let y=Math.min(yn,ys);y<=Math.max(yn,ys);y++){
         urls.push(BASEMAP.replace('{z}',z).replace('{x}',x).replace('{y}',y));
-        if(source&&source.kind==='auto')urls.push(exportUrl(source.service,x,y,z));
       }
   }
   return urls;
 }
 $('bDl').onclick=()=>{
   $('bar').style.display='none';$('dlProg').textContent='';openSheet('shDl');
-  $('dlNote').innerHTML=(source&&source.kind==='image')
-    ? 'Your hand‑aligned map is already stored on the device. This caches the satellite tiles for the townsite so the basemap works offline too.'
-    : 'Caches roughly a 3 km square around the townsite at walking zooms — satellite plus the historic overlay. A few hundred tiles — best done on Wi‑Fi.';
+  $('dlNote').innerHTML='The old map is already on this device. This caches the satellite tiles for roughly a 3 km square around the townsite, so the basemap works offline too. A few hundred tiles — best done on Wi‑Fi.';
 };
 $('dlClose').onclick=()=>closeSheet('shDl');
 $('dlGo').onclick=()=>{
